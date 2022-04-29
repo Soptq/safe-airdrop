@@ -41,8 +41,7 @@ export const useUnstoppableDomainsResolver: () => UnstoppableDomainsResolver = (
   );
 
   const isUDEnabled = useCallback(async () => {
-    const network = await web3Provider.getNetwork();
-    return network.chainId === 1;
+    return true; // always true
   }, [web3Provider]);
 
   return useMemo(

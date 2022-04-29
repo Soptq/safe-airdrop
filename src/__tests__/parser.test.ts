@@ -129,7 +129,13 @@ describe("Parsing CSVs ", () => {
     // this csv contains more values than headers in row1
     const invalidCSV = "head1,header2\nvalue1,value2,value3";
     expect(
-      CSVParser.parseCSV(invalidCSV, mockTokenInfoProvider, mockCollectibleTokenInfoProvider, mockEnsResolver),
+      CSVParser.parseCSV(
+        invalidCSV,
+        mockTokenInfoProvider,
+        mockCollectibleTokenInfoProvider,
+        mockEnsResolver,
+        mockUDResolver,
+      ),
     ).to.be.rejectedWith("column header mismatch expected: 2 columns got: 3");
   });
 
@@ -284,6 +290,32 @@ describe("Parsing CSVs ", () => {
 
     expect(warningInvalidContract.lineNo).to.equal(4);
     expect(warningInvalidContract.message).to.equal("No token contract was found at unknown.eth");
+  });
+
+  it("tries to resolve ud names", async () => {
+    const receiverEnsName = ["erc20", listedToken.address, "receiver1.crypto", "1"];
+    const tokenEnsName = ["erc20", "token.eth", validReceiverAddress, "69.420"];
+    const unknownReceiverEnsName = ["erc20", listedToken.address, "unknown.crypto", "1"];
+    const unknownTokenEnsName = ["erc20", "unknown.eth", "receiver1.crypto", "1"];
+
+    const [payment, warnings] = await CSVParser.parseCSV(
+      csvStringFromRows(receiverEnsName, tokenEnsName, unknownReceiverEnsName, unknownTokenEnsName),
+      mockTokenInfoProvider,
+      mockCollectibleTokenInfoProvider,
+      mockEnsResolver,
+      mockUDResolver,
+    );
+    expect(warnings).to.have.lengthOf(3);
+    expect(payment).to.have.lengthOf(2);
+    const [paymentReceiverEnsName, paymentTokenEnsName] = payment as AssetTransfer[];
+    const [warningUnknownReceiverEnsName, warningInvalidTokenAddress, warningInvalidContract] = warnings;
+    expect(paymentReceiverEnsName.decimals).to.be.equal(18);
+    expect(paymentReceiverEnsName.receiver).to.equal(testData.addresses.receiver1);
+    expect(paymentReceiverEnsName.tokenAddress).to.equal(listedToken.address);
+    expect(paymentReceiverEnsName.amount.isEqualTo(new BigNumber(1))).to.be.true;
+
+    expect(warningUnknownReceiverEnsName.lineNo).to.equal(3);
+    expect(warningUnknownReceiverEnsName.message).to.equal("Invalid Receiver Address: unknown.crypto");
   });
 
   it("parses valid collectible transfers", async () => {
