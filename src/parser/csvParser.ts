@@ -5,6 +5,7 @@ import { CodeWarning } from "../contexts/MessageContextProvider";
 import { CollectibleTokenInfoProvider } from "../hooks/collectibleTokenInfoProvider";
 import { EnsResolver } from "../hooks/ens";
 import { TokenInfoProvider } from "../hooks/token";
+import { UnstoppableDomainsResolver } from "../hooks/ud";
 
 import { transform } from "./transformation";
 import { validateRow } from "./validation";
@@ -76,6 +77,7 @@ export class CSVParser {
     tokenInfoProvider: TokenInfoProvider,
     erc721TokenInfoProvider: CollectibleTokenInfoProvider,
     ensResolver: EnsResolver,
+    udResolver: UnstoppableDomainsResolver,
   ): Promise<[Transfer[], CodeWarning[]]> => {
     const noLines = countLines(csvText);
     // Hard limit at 400 lines of txs
@@ -92,7 +94,7 @@ export class CSVParser {
       const resultingWarnings: CodeWarning[] = [];
       parseString<CSVRow, Transfer | UnknownTransfer>(csvText, { headers: true })
         .transform((row: CSVRow, callback) =>
-          transform(row, tokenInfoProvider, erc721TokenInfoProvider, ensResolver, callback),
+          transform(row, tokenInfoProvider, erc721TokenInfoProvider, ensResolver, udResolver, callback),
         )
         .validate((row: Transfer | UnknownTransfer, callback: RowValidateCallback) => validateRow(row, callback))
         .on("data", (data: Transfer) => results.push(data))

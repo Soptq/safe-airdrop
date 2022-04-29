@@ -6,6 +6,7 @@ import chaiAsPromised from "chai-as-promised";
 import { CollectibleTokenInfoProvider } from "../hooks/collectibleTokenInfoProvider";
 import { EnsResolver } from "../hooks/ens";
 import { TokenMap, MinimalTokenInfo, fetchTokenList, TokenInfoProvider } from "../hooks/token";
+import { UnstoppableDomainsResolver } from "../hooks/ud";
 import { AssetTransfer, CollectibleTransfer, CSVParser } from "../parser/csvParser";
 import { testData } from "../test/util";
 
@@ -30,6 +31,7 @@ describe("Parsing CSVs ", () => {
   let mockTokenInfoProvider: TokenInfoProvider;
   let mockCollectibleTokenInfoProvider: CollectibleTokenInfoProvider;
   let mockEnsResolver: EnsResolver;
+  let mockUDResolver: UnstoppableDomainsResolver;
 
   beforeAll(async () => {
     tokenList = await fetchTokenList(testData.dummySafeInfo.chainId);
@@ -98,6 +100,29 @@ describe("Parsing CSVs ", () => {
       },
       isEnsEnabled: async () => true,
     };
+
+    mockUDResolver = {
+      resolveName: async (udName: string) => {
+        if (udName.startsWith("0x")) {
+          return udName;
+        }
+        switch (udName) {
+          case "receiver1.crypto":
+            return testData.addresses.receiver1;
+          case "receiver2.crypto":
+            return testData.addresses.receiver2;
+          case "receiver3.crypto":
+            return testData.addresses.receiver3;
+          case "token.crypto":
+            return listedToken.address;
+          case "error.crypto":
+            throw new Error("unexpected error!");
+          default:
+            return null;
+        }
+      },
+      isUDEnabled: async () => true,
+    };
   });
 
   it("should throw errors for invalid CSVs", async () => {
@@ -111,7 +136,13 @@ describe("Parsing CSVs ", () => {
   it("should skip files with >400 lines of transfers", async () => {
     let largeCSV = csvStringFromRows(...Array(401).fill(["erc20", listedToken.address, validReceiverAddress, "1"]));
     expect(
-      CSVParser.parseCSV(largeCSV, mockTokenInfoProvider, mockCollectibleTokenInfoProvider, mockEnsResolver),
+      CSVParser.parseCSV(
+        largeCSV,
+        mockTokenInfoProvider,
+        mockCollectibleTokenInfoProvider,
+        mockEnsResolver,
+        mockUDResolver,
+      ),
     ).to.be.rejectedWith(
       "Max number of lines exceeded. Due to the block gas limit transactions are limited to 400 lines.",
     );
@@ -126,6 +157,7 @@ describe("Parsing CSVs ", () => {
         mockTokenInfoProvider,
         mockCollectibleTokenInfoProvider,
         mockEnsResolver,
+        mockUDResolver,
       ),
     ).to.be.rejectedWith("unexpected error!");
   });
@@ -140,6 +172,7 @@ describe("Parsing CSVs ", () => {
       mockTokenInfoProvider,
       mockCollectibleTokenInfoProvider,
       mockEnsResolver,
+      mockUDResolver,
     );
     expect(warnings).to.be.empty;
     expect(payment).to.have.lengthOf(3);
@@ -185,6 +218,7 @@ describe("Parsing CSVs ", () => {
       mockTokenInfoProvider,
       mockCollectibleTokenInfoProvider,
       mockEnsResolver,
+      mockUDResolver,
     );
     expect(warnings).to.have.lengthOf(5);
     const [
@@ -224,6 +258,7 @@ describe("Parsing CSVs ", () => {
       mockTokenInfoProvider,
       mockCollectibleTokenInfoProvider,
       mockEnsResolver,
+      mockUDResolver,
     );
     expect(warnings).to.have.lengthOf(3);
     expect(payment).to.have.lengthOf(2);
@@ -269,6 +304,7 @@ describe("Parsing CSVs ", () => {
       mockTokenInfoProvider,
       mockCollectibleTokenInfoProvider,
       mockEnsResolver,
+      mockUDResolver,
     );
     expect(warnings).to.be.empty;
     expect(payment).to.have.lengthOf(5);
@@ -374,6 +410,7 @@ describe("Parsing CSVs ", () => {
       mockTokenInfoProvider,
       mockCollectibleTokenInfoProvider,
       mockEnsResolver,
+      mockUDResolver,
     );
     expect(warnings).to.have.lengthOf(15);
     const [
@@ -450,6 +487,7 @@ describe("Parsing CSVs ", () => {
         mockTokenInfoProvider,
         mockCollectibleTokenInfoProvider,
         mockEnsResolver,
+        mockUDResolver,
       );
       expect(warnings).to.be.empty;
       expect(payment).to.have.length(1);
@@ -468,6 +506,7 @@ describe("Parsing CSVs ", () => {
         mockTokenInfoProvider,
         mockCollectibleTokenInfoProvider,
         mockEnsResolver,
+        mockUDResolver,
       );
       expect(warnings).to.be.empty;
       expect(payment).to.have.length(1);

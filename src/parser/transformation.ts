@@ -5,6 +5,7 @@ import { utils } from "ethers";
 import { CollectibleTokenInfoProvider } from "../hooks/collectibleTokenInfoProvider";
 import { EnsResolver } from "../hooks/ens";
 import { TokenInfoProvider } from "../hooks/token";
+import { UnstoppableDomainsResolver } from "../hooks/ud";
 
 import { AssetTransfer, CollectibleTransfer, CSVRow, Transfer, UnknownTransfer } from "./csvParser";
 
@@ -28,6 +29,7 @@ export const transform = (
   tokenInfoProvider: TokenInfoProvider,
   erc721InfoProvider: CollectibleTokenInfoProvider,
   ensResolver: EnsResolver,
+  udResolver: UnstoppableDomainsResolver,
   callback: RowTransformCallback<Transfer | UnknownTransfer>,
 ): void => {
   const selectedChainShortname = tokenInfoProvider.getSelectedNetworkShortname();
@@ -40,6 +42,7 @@ export const transform = (
         { ...row, token_type: "erc20", receiver: trimmedReceiver },
         tokenInfoProvider,
         ensResolver,
+        udResolver,
         callback,
       );
       break;
@@ -48,6 +51,7 @@ export const transform = (
         { ...row, token_type: "native", receiver: trimmedReceiver },
         tokenInfoProvider,
         ensResolver,
+        udResolver,
         callback,
       );
       break;
@@ -58,6 +62,7 @@ export const transform = (
         { ...row, token_type: "nft", receiver: trimmedReceiver },
         erc721InfoProvider,
         ensResolver,
+        udResolver,
         callback,
       );
       break;
@@ -67,6 +72,7 @@ export const transform = (
         { ...row, token_type: "erc20", receiver: trimmedReceiver },
         tokenInfoProvider,
         ensResolver,
+        udResolver,
         callback,
       );
       break;
@@ -77,6 +83,7 @@ export const transformAsset = (
   row: Omit<CSVRow, "token_type"> & { token_type: "erc20" | "native" },
   tokenInfoProvider: TokenInfoProvider,
   ensResolver: EnsResolver,
+  udResolver: UnstoppableDomainsResolver,
   callback: RowTransformCallback<Transfer>,
 ): void => {
   const selectedChainShortname = tokenInfoProvider.getSelectedNetworkShortname();
@@ -88,7 +95,7 @@ export const transformAsset = (
     tokenType: row.token_type,
   };
 
-  toPayment(prePayment, tokenInfoProvider, ensResolver)
+  toPayment(prePayment, tokenInfoProvider, ensResolver, udResolver)
     .then((row) => callback(null, row))
     .catch((reason) => callback(reason));
 };
@@ -97,12 +104,24 @@ const toPayment = async (
   row: PrePayment,
   tokenInfoProvider: TokenInfoProvider,
   ensResolver: EnsResolver,
+  udResolver: UnstoppableDomainsResolver,
 ): Promise<AssetTransfer> => {
   // depending on whether there is an ens name or an address provided we either resolve or lookup
   // For performance reasons the lookup will be done after the parsing.
-  let [resolvedReceiverAddress, receiverEnsName] = utils.isAddress(row.receiver)
-    ? [row.receiver, null]
-    : [(await ensResolver.isEnsEnabled()) ? await ensResolver.resolveName(row.receiver) : null, row.receiver];
+  let resolvedReceiverAddress, receiverEnsName;
+  if (utils.isAddress(row.receiver)) {
+    [resolvedReceiverAddress, receiverEnsName] = [row.receiver, null];
+  } else if (row.receiver.endsWith(".eth")) {
+    [resolvedReceiverAddress, receiverEnsName] = [
+      (await ensResolver.isEnsEnabled()) ? await ensResolver.resolveName(row.receiver) : null,
+      row.receiver,
+    ];
+  } else {
+    [resolvedReceiverAddress, receiverEnsName] = [
+      (await udResolver.isUDEnabled()) ? await udResolver.resolveName(row.receiver) : null,
+      row.receiver,
+    ];
+  }
   resolvedReceiverAddress = resolvedReceiverAddress !== null ? resolvedReceiverAddress : row.receiver;
   if (row.tokenAddress === null) {
     // Native asset payment.
@@ -153,6 +172,7 @@ export const transformCollectible = (
   row: Omit<CSVRow, "token_type"> & { token_type: "nft" },
   erc721InfoProvider: CollectibleTokenInfoProvider,
   ensResolver: EnsResolver,
+  udResolver: UnstoppableDomainsResolver,
   callback: RowTransformCallback<Transfer>,
 ): void => {
   const prePayment: PreCollectibleTransfer = {
@@ -164,7 +184,7 @@ export const transformCollectible = (
     amount: new BigNumber(row.amount ?? ""),
   };
 
-  toCollectibleTransfer(prePayment, erc721InfoProvider, ensResolver)
+  toCollectibleTransfer(prePayment, erc721InfoProvider, ensResolver, udResolver)
     .then((row) => callback(null, row))
     .catch((reason) => callback(reason));
 };
@@ -173,15 +193,24 @@ const toCollectibleTransfer = async (
   preCollectible: PreCollectibleTransfer,
   collectibleTokenInfoProvider: CollectibleTokenInfoProvider,
   ensResolver: EnsResolver,
+  udResolver: UnstoppableDomainsResolver,
 ): Promise<CollectibleTransfer> => {
   const fromAddress = collectibleTokenInfoProvider.getFromAddress();
 
-  let [resolvedReceiverAddress, receiverEnsName] = utils.isAddress(preCollectible.receiver)
-    ? [preCollectible.receiver, null]
-    : [
-        (await ensResolver.isEnsEnabled()) ? await ensResolver.resolveName(preCollectible.receiver) : null,
-        preCollectible.receiver,
-      ];
+  let resolvedReceiverAddress, receiverEnsName;
+  if (utils.isAddress(preCollectible.receiver)) {
+    [resolvedReceiverAddress, receiverEnsName] = [preCollectible.receiver, null];
+  } else if (preCollectible.receiver.endsWith(".eth")) {
+    [resolvedReceiverAddress, receiverEnsName] = [
+      (await ensResolver.isEnsEnabled()) ? await ensResolver.resolveName(preCollectible.receiver) : null,
+      preCollectible.receiver,
+    ];
+  } else {
+    [resolvedReceiverAddress, receiverEnsName] = [
+      (await udResolver.isUDEnabled()) ? await udResolver.resolveName(preCollectible.receiver) : null,
+      preCollectible.receiver,
+    ];
+  }
   resolvedReceiverAddress = resolvedReceiverAddress !== null ? resolvedReceiverAddress : preCollectible.receiver;
 
   const tokenInfo = await collectibleTokenInfoProvider.getTokenInfo(

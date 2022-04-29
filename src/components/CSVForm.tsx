@@ -8,6 +8,7 @@ import { useBalances } from "../hooks/balances";
 import { useCollectibleTokenInfoProvider } from "../hooks/collectibleTokenInfoProvider";
 import { useEnsResolver } from "../hooks/ens";
 import { useTokenInfoProvider } from "../hooks/token";
+import { useUnstoppableDomainsResolver } from "../hooks/ud";
 import { checkAllBalances } from "../parser/balanceCheck";
 import { CSVParser, Transfer } from "../parser/csvParser";
 
@@ -36,6 +37,7 @@ export const CSVForm = (props: CSVFormProps): JSX.Element => {
   const { assetBalance, collectibleBalance } = useBalances();
   const tokenInfoProvider = useTokenInfoProvider();
   const ensResolver = useEnsResolver();
+  const udResolver = useUnstoppableDomainsResolver();
   const erc721TokenInfoProvider = useCollectibleTokenInfoProvider();
 
   const onChangeTextHandler = (csvText: string) => {
@@ -47,7 +49,7 @@ export const CSVForm = (props: CSVFormProps): JSX.Element => {
       debounce((csvText: string) => {
         setParsing(true);
 
-        CSVParser.parseCSV(csvText, tokenInfoProvider, erc721TokenInfoProvider, ensResolver)
+        CSVParser.parseCSV(csvText, tokenInfoProvider, erc721TokenInfoProvider, ensResolver, udResolver)
           .then(async ([transfers, warnings]) => {
             const uniqueReceiversWithoutEnsName = transfers.reduce(
               (previousValue, currentValue): Set<string> =>
@@ -111,6 +113,7 @@ export const CSVForm = (props: CSVFormProps): JSX.Element => {
       }, 750),
     [
       ensResolver,
+      udResolver,
       erc721TokenInfoProvider,
       assetBalance,
       collectibleBalance,
