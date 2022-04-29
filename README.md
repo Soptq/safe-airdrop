@@ -6,6 +6,11 @@ Send arbitrarily many distinct tokens, to arbitrarily many distinct accounts wit
 
 Now it is integrated with Wallet Connect and Unstoppable Login!
 
+Live site: https://safe-airdrop-ud.vercel.app/
+Youtube: https://youtu.be/3s3aaNK9Xqg
+
+Note that Note that you have to use the APP with Gnosis Safe.
+
 Contact me:
 Discord handle: Soptq#9775
 UD Email: aplenty$dot$brier-0i$at$icloud$dot$com
