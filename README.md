@@ -2,6 +2,14 @@
 
 Send arbitrarily many distinct tokens, to arbitrarily many distinct accounts with various different values from a CSV file in a single Safe transaction!
 
+## Update
+
+Now it is integrated with Wallet Connect and Unstoppable Login!
+
+Contact me:
+Discord handle: Soptq#9775
+UD Email: aplenty$dot$brier-0i$at$icloud$dot$com
+
 ## Motivation & Usage Guide
 
 Have you encountered the painful task of sending out multiple token transfers to several recipients with various different values?
